@@ -80,12 +80,12 @@ Using `useContext` hook we will implement an auth provider that will wrap our ap
     }, []);
 
     const initializeOptions = async() => {
-      let uri = isPlatform('capacitor') ? 'msauth.com.eastdilsecured.portal://auth' : 'http://localhost:3000';
+      let uri = isPlatform('capacitor') ? 'ios redirect url' : 'http://localhost:3000';
       console.log(uri);
       (await MsalCap.setOptions({
-        clientId: process.env.REACT_APP_CLIENT_ID,
-        authority: `https://login.microsoftonline.com/${process.env.REACT_APP_TENANT_ID}`,
-        redirectUri: uri,
+        clientId: 'Client Id',
+        authority: `https://login.microsoftonline.com/{Tenant Id}`,
+        redirectUri: 'Redirect Uri',
         scopes: [
           'user.read'
         ]
