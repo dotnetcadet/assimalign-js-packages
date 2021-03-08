@@ -20,7 +20,7 @@ Maintenance Status: Partially Maintained (help wanted)
 
 ---
 
-## Usage (Web iOS)) [Android Comming soon]
+## Usage (Web iOS) [Android Comming soon]
 Below are examples are of how to implement an authentication provider that can be resued through out the application.
 
 ### Initial Setup
@@ -250,8 +250,7 @@ Example Coming Soon
   <tr>
     <td align="center">
       <a href="https://rdlabo.jp">
-      <img src="https://avatars.githubusercontent.com/u/46410573?s=60&amp;v=4" width="100px"><br /><sub><b>Chase Crawford</b></sub></a><br />
-      <a href="https://github.com/capacitor-community/apple-sign-in/commits?author=rdlabo" title="Code">💻</a>
+      <img src="https://avatars.githubusercontent.com/u/46410573?s=60&amp;v=4" width="100px"><br /><sub><b>Chase Crawford</b></sub>
       </td>
   </tr>
 </table>
