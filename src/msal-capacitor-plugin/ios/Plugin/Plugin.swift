@@ -46,10 +46,20 @@ public class MsalPlugin: CAPPlugin {
                     self.msalUseBiometrics = isoOptions["enableBiometrics"] as! Bool;
                 }
 
+               var tokenCache = ""
+
                 #if os(iOS)
-                let tokenCache = isoOptions["tokenCache"] as! String ?? "com.microsoft.adalcache"
+                if isoOptions["tokenCache"] == nil {
+                    tokenCache = "com.microsoft.adalcache"
+                } else {
+                    tokenCache = isoOptions["tokenCache"] as! String
+                }
                 #else
-                let tokenCache = iosOptions["tokenCache"] as! String ?? "com.microsoft.identity.universalstorage"
+                if isoOptions["tokenCache"] == nil {
+                    tokenCache = "com.microsoft.identity.universalstorage"
+                } else {
+                    tokenCache = isoOptions["tokenCache"] as! String
+                }
                 #endif
                 clientConfiguration.cacheConfig.keychainSharingGroup = tokenCache
             } else {
