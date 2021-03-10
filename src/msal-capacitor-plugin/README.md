@@ -88,6 +88,10 @@ Using `useContext` hook we will implement an auth provider that will wrap our ap
         redirectUri: 'Redirect Uri',
         scopes: [
           'user.read'
+        ], 
+        iosOptions: [
+          tokenCache: 'ios or mac keychain location' // This is where your login is cahced
+          enableBiometrics: true // This will enable Biometcis authentication
         ]
       }))
     };
@@ -119,38 +123,6 @@ Using `useContext` hook we will implement an auth provider that will wrap our ap
         catch(error){
           reject(error);
         }
-      })
-    }
-
-
-    const biometricAuth = async(): Promise<boolean> => {
-      return new Promise(async (resolve, reject)=>{
-        if(isPlatform('capacitor')) {
-          NativeBiometric.isAvailable().then(
-            (result: AvailableResult) => {
-              const isAvailable = result.isAvailable;
-              const isFaceId = result.biometryType == BiometryType.FACE_ID;
-              if (isAvailable) {
-                NativeBiometric.verifyIdentity({
-                  reason: "For easy log in",
-                  title: "Log in",
-                  subtitle: "Maybe add subtitle here?",
-                  description: "Maybe a description too?"
-                }).then(()=>{
-                  resolve(true);
-                }, (error: any)=> {
-                  resolve(false);
-                })
-              } else {
-                // Return true even
-                resolve(true); 
-              }
-            }
-          );
-        } else {
-          resolve(true);
-        }
-        
       })
     }
 

@@ -1,0 +1,7 @@
+{
+  "name": "msal-capacitor-plugin-demo",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react"
+}

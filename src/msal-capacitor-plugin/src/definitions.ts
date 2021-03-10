@@ -6,11 +6,28 @@ declare module '@capacitor/core' {
   }
 }
 
+export interface IMsalAndroidPluginOptions {
+
+}
+
+export interface IMsalWebPluginOptions {
+  cacheLocation: 'sessionStorage' | 'localStorage';
+  storeAuthStateInCookie: boolean;
+}
+
+export interface IMsalIosPluginOptions {
+  tokenCache?: string;
+  enableBiometrics?: boolean;
+}
+
 export interface IMsalPluginOptions {
   clientId: string;
   redirectUri: string;
   scopes: string[];
   authority: string;
+  webOptions?: IMsalWebPluginOptions;
+  iosOptions?: IMsalIosPluginOptions;
+  androidOptions?: IMsalAndroidPluginOptions;
 }
 
 export interface IMsalPlugin {
