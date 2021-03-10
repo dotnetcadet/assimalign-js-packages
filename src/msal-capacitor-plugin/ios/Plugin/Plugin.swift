@@ -1,25 +1,28 @@
 import Foundation
 import Capacitor
 import MSAL
+import LocalAuthentication
 
 @objc(MsalCap)
 public class MsalPlugin: CAPPlugin {
     
     typealias AccountCompletion = (MSALAccount?) -> Void
 
-    var account: MSALAccount?
-    var authResults: MSALResult?
-    var client: MSALPublicClientApplication?
-    var authenticated = Bool()
-    var popupScopes: [String]?
-    var hasOptions = Bool()
+    var msalAccount: MSALAccount?
+    var msalResults: MSALResult?
+    var msalClient: MSALPublicClientApplication?
+    var msalAuthenticated = Bool()
+    var msalUseBiometrics = Bool()
+    var msalPopupScopes: [String]?
+    var msalHasOptions = Bool()
+    var msalLocalAuthContext = LAContext()
     
     var dateFormatter = DateFormatter()
     var loggingText = String()
-    
 
     // This will act as a constructor for initializing
     public override func load() {
+        
         self.dateFormatter.dateFormat = "YY-MM-dd'T'HH:mm:ss"
     }
     
@@ -31,16 +34,33 @@ public class MsalPlugin: CAPPlugin {
             guard let clientId = call.getString("clientId") else {return }
             guard let redirectUri  = call.getString("redirectUri") else {return }
             guard let authorityUrl = URL(string: authorityUri ) else {return }
-            
+
             // Step 02: If made it this point, then set & create Configuraitons, Authority, & Public Client 
             let clientAuthority = try MSALAADAuthority(url: authorityUrl)
             let clientConfiguration = MSALPublicClientApplicationConfig(clientId: clientId, redirectUri: redirectUri, authority: clientAuthority)
             
+            if let isoOptions = call.getObject("iosOptions") {
+                if isoOptions["enableBiometrics"] == nil {
+                    self.msalUseBiometrics = false
+                } else {
+                    self.msalUseBiometrics = isoOptions["enableBiometrics"] as! Bool;
+                }
+
+                #if os(iOS)
+                let tokenCache = isoOptions["tokenCache"] as! String ?? "com.microsoft.adalcache"
+                #else
+                let tokenCache = iosOptions["tokenCache"] as! String ?? "com.microsoft.identity.universalstorage"
+                #endif
+                clientConfiguration.cacheConfig.keychainSharingGroup = tokenCache
+            } else {
+                self.msalUseBiometrics = false
+            }
+            
             // Step 03: Set plugin errors
-            self.client = try MSALPublicClientApplication(configuration: clientConfiguration)
-            self.popupScopes = call.getArray("scopes", String.self)
-            self.hasOptions = true
-            self.authenticated = false
+            self.msalClient = try MSALPublicClientApplication(configuration: clientConfiguration)
+            self.msalPopupScopes = call.getArray("scopes", String.self)
+            self.msalHasOptions = true
+            self.msalAuthenticated = false
 
             // Step 04: Need to resolve void and send response back to the bridge
             call.resolve()
@@ -52,44 +72,48 @@ public class MsalPlugin: CAPPlugin {
         }
     }
     
+    /*
+     
+    */
     @objc func acquireAccessTokenForUser(_ call: CAPPluginCall) {
         // Step 01: Check if Options have been set
-        if self.hasOptions == false {
+        if self.msalHasOptions == false {
             call.reject("AcquireAccessTokenForUser Error: MSAL Plugin Options have not been set yet. Please run 'setOptions'")
             return
         }
 
-        if self.authenticated == true {
-
-            // Step 01: 
+        if self.msalAuthenticated == true {
+            // 1.
             let msalParameters = MSALParameters()
             msalParameters.completionBlockQueue = DispatchQueue.main
             
-            self.client?.getCurrentAccount(with: msalParameters, completionBlock: { (currentAccount, previousAccount, error)  in
+            self.msalClient?.getCurrentAccount(with: msalParameters, completionBlock: { (currentAccount, previousAccount, error)  in
                 if let currentAccount = currentAccount {
-                    self.account = currentAccount
+                    self.msalAccount = currentAccount
                 }
             })
             
-            // Step
-            guard let scopes = call.getArray("scopes", String.self) else {
+            // 2. Validate and set scopes where passed through options
+            guard let tokenScopes = call.getArray("scopes", String.self) else {
                 call.reject("AcquireAccessToken Error: No Scopes were provided")
                 return
             }
 
-            let parameters = MSALSilentTokenParameters(scopes: scopes, account: account)
+            // 3. Set Silent Token Parameters
+            let parameters = MSALSilentTokenParameters(scopes: tokenScopes, account: self.msalAccount!)
             parameters.forceRefresh = true
             
-            self.client?.acquireTokenSilent(with: parameters, completionBlock: { (response, error) in
+            // 4. Begin acquireing Access Token for OBO Flow and other Open ID Connect Prtocols
+            self.msalClient?.acquireTokenSilent(with: parameters, completionBlock: { (response, error) in
                 if let error = error {
-                    call.error("Unable to Acquire Access Token", error, [
+                    call.error("AcquireAccessToken Error: Unable to Acquire Access Token", error, [
                         "unexpectedError": error.localizedDescription
                     ])
                     return
                 }
 
                 guard let response = response else {
-                    call.reject("Could not acquire token: No result returned")
+                    call.reject("AcquireAccessToken Error: Could not acquire token: No result returned")
                     return
                 }
                 
@@ -103,23 +127,25 @@ public class MsalPlugin: CAPPlugin {
     }
 
     @objc func acquireUserRoles(_ call: CAPPluginCall) {
-        // Step 01: Check if Options have been set
-        if self.hasOptions == false {
+        // 1. Check if Options have been set
+        if self.msalHasOptions == false {
             call.reject("AcquireUserRoles Error: MSAL Plugin Options have not been set yet. Please run 'setOptions'")
             return
         }
         
-        // Step 02: Check if 
-        if self.authenticated == true {
-            guard let claims = self.account?.accountClaims else {
+        // 2. Check if User has been authenticated
+        if self.msalAuthenticated == true {
+            guard let claims = self.msalAccount?.accountClaims else {
                 call.resolve([
                     "results": []
                 ])
                 return
             }
             
+            // 3. Cast Claims as String array
             let roles = claims["roles"] as? [String]
             
+            // 4. Return Roles
             call.resolve([
                 "results": roles
             ])
@@ -131,76 +157,76 @@ public class MsalPlugin: CAPPlugin {
     
     @objc func acquireAuthenticationResult(_ call: CAPPluginCall) {
         // Step 01: Check if Options have been set
-        if self.Options == false {
-            call.reject("")
+        if self.msalHasOptions == false {
+            call.reject("AcquireAuthenticationResult Error:  MSAL Plugin Options have not been set yet. Please run 'setOptions'")
             return
         }
-
-        // Step 02: 
-        guard let response = self.authResults else {
+        
+        if self.msalResults == nil {
             call.resolve([
                 "results": []
             ])
             return
         }
-        
-        call.resolve([
-            "results" : [
-                "authority" : response.authority.url.absoluteString,
-                "uniqueId": response.tenantProfile.identifier,
-                "tenantId" : response.tenantProfile.tenantId ?? "" as String,
-                "accessToken" : response.accessToken,
-                "idToken" : response.idToken ?? "" as String,
-                "expiresOn": self.dateFormatter.string(from: response.expiresOn),
-                "account": [
-                    "homeAccountId": response.account.homeAccountId?.identifier ?? "",
-                    "tenantId": response.tenantProfile.tenantId,
-                    "localAccountId":  response.account.identifier ?? "",
-                    "username": response.account.username,
-                    "idTokenClaims": response.account.accountClaims
-                ],
-                "idTokenClaims": [
-                    response.tenantProfile.claims
-                ],
-                "scopes": response.scopes
-            ]
-        ])
+        self.resolveAuthenticationResults(call, self.msalResults)
     }
         
     @objc func isAuthenticated(_ call: CAPPluginCall) {
-        // Step 01: Check if Options have been set
-        if self.hasOptions == false {
+        // 1. Check if Options have been set
+        if self.msalHasOptions == false {
             call.reject("isAuthenticated Error: MSAL Plugin Options have not been set yet. Please run 'setOptions'")
             return
         }
 
         call.resolve([
-            "results": self.authenticated
+            "results": self.msalAuthenticated
         ])
     }
      
     @objc func login(_ call: CAPPluginCall)  {
-        // Step 01: Check if Options have been set
-        if self.hasOptions == false {
+        // 1. Check if Options have been set
+        if self.msalHasOptions == false {
             call.reject("Login Error: MSAL Plugin Options have not been set yet. Please run 'setOptions'")
             return
         }
         
-        // Step 03: Dispatch
-        DispatchQueue.main.async {
-            self.setCurrentAccount {(account) in
-                guard let currentAccount = self.account else {
-                    self.loginInteractive(call)
-                    return
+        if(self.msalUseBiometrics == true && self.isBiometricAvaiable() == true) {
+            var canEvaluateError: NSError?
+
+            if self.msalLocalAuthContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &canEvaluateError){
+                let reason = "For biometric authentication"
+                self.msalLocalAuthContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { (success, evaluateError) in
+                    if success {
+                        DispatchQueue.main.async {
+                            self.setCurrentAccount {(account) in
+                                guard let currentAccount = self.msalAccount else {
+                                    self.loginInteractive(call)
+                                    return
+                                }
+                                self.loginSilently(currentAccount, call)
+                            }
+                        }
+                    }
                 }
-                self.loginSilently(currentAccount, call)
+            } else {
+                call.reject("Biometrics Failed")
+            }
+        } else {
+            DispatchQueue.main.async {
+                self.setCurrentAccount {(account) in
+                    guard let currentAccount = self.msalAccount else {
+                        self.loginInteractive(call)
+                        return
+                    }
+                    self.loginSilently(currentAccount, call)
+                }
             }
         }
     }
     
     @objc func logout(_ call: CAPPluginCall) {
         // Step 01: Check if Options have been set
-        if self.hasOptions == false {
+        if self.msalHasOptions == false {
             call.reject("Logout Error: MSAL Plugin Options have not been set yet. Please run 'setOptions'")
             return
         }
@@ -211,29 +237,26 @@ public class MsalPlugin: CAPPlugin {
     }
     
     
-    
-
-    
     // This will check to see if there are any avaiable accounts already cached on the device
     // If any account is found it will load it and try to up
     private func setCurrentAccount(completion: AccountCompletion? = nil) {
         let msalParameters = MSALParameters()
         msalParameters.completionBlockQueue = DispatchQueue.main
                 
-        self.client?.getCurrentAccount(with: msalParameters, completionBlock: { (currentAccount, previousAccount, error) in
+        self.msalClient?.getCurrentAccount(with: msalParameters, completionBlock: { (currentAccount, previousAccount, error) in
             if let error = error {
                 return
             }
             
             if let currentAccount = currentAccount {
-                self.account = currentAccount
+                self.msalAccount = currentAccount
                 if let completion = completion {
-                    completion(self.account)
+                    completion(self.msalAccount)
                 }
                 return
             }
             
-            self.account = nil
+            self.msalAccount = nil
   
             if let completion = completion {
                 completion(nil)
@@ -243,155 +266,138 @@ public class MsalPlugin: CAPPlugin {
     
     
     private func logoutInteractive(_ call: CAPPluginCall) {
-        guard let applicationContext = self.client else {
-            call.resolve()
-            return
-        }
-        guard let currentAccount = self.account else {
-            call.resolve()
-            return
-        }
-        
         do {
-            
+            // 1. Set Web View Parameters  for iOS or macos
+            #if os(iOS)
             let webViewParameters = MSALWebviewParameters(authPresentationViewController: self.bridge.viewController)
+            #else
+            let webViewParameters = MSALWebviewParameters()
+            #endif
+
             let signoutParameters = MSALSignoutParameters(webviewParameters: webViewParameters)
-            
             signoutParameters.signoutFromBrowser = true
-            self.client?.signout(with: currentAccount, signoutParameters: signoutParameters, completionBlock: {(success, error) in
+
+            self.msalClient?.signout(with: self.msalAccount!, signoutParameters: signoutParameters, completionBlock: {(success, error) in
                 if let error = error {
-                    call.error("Unable to signout", error, [
+                    call.error("SignOut Error: Unable to Signout", error, [
                         "unexpectedError": error.localizedDescription
                     ])
                     return
                 }
-                
-                self.account = nil
-                self.authResults = nil
-                self.authenticated = false
+                // 3. Reset all variables
+                self.msalAccount = nil
+                self.msalResults = nil
+                self.msalAuthenticated = false
+
                 call.resolve()
             })
         }
     }
     
-
-    
     private func loginInteractive(_ call: CAPPluginCall) {
-        if self.hasOptions == true {
-            
-            let webViewParameters = MSALWebviewParameters(authPresentationViewController: self.bridge.viewController)
-            let parameters = MSALInteractiveTokenParameters(scopes: self.popupScopes!, webviewParameters: webViewParameters)
-            
-            parameters.promptType = .selectAccount
-            
-            self.client?.acquireToken(with: parameters) { (response, error) in
-                if let error = error {
-                    call.error("Unknown Error", error, [
-                        "errorDescription": error.localizedDescription
-                    ])
-                    return
-                }
-                
-                guard let response = response else {
-                    call.reject("Could not acquire token: No result returned", nil, nil, [
-                        "interactiveLogin": "No response was returned from MSAL Login"
-                    ])
-                    return
-                }
-                
-                self.authResults = response
-                self.account = response.account
-                self.authenticated = true
-                
-                call.resolve([
-                    "results" : [
-                        "authority" : response.authority.url.absoluteString,
-                        "uniqueId": response.tenantProfile.identifier,
-                        "tenantId" : response.tenantProfile.tenantId ?? "" as String,
-                        "accessToken" : response.accessToken,
-                        "idToken" : response.idToken ?? "" as String,
-                        "expiresOn": self.dateFormatter.string(from: response.expiresOn),
-                        "account": [
-                            "homeAccountId": response.account.homeAccountId?.identifier ?? "",
-                            "tenantId": response.tenantProfile.tenantId,
-                            "localAccountId":  response.account.identifier ?? "",
-                            "username": response.account.username,
-                            "idTokenClaims": response.account.accountClaims
-                        ],
-                        "idTokenClaims": [
-                            response.tenantProfile.claims
-                        ],
-                        "scopes": response.scopes
-                    ]
+        // 1. Set Web View Parameters  for iOS or macos
+        #if os(iOS)
+        let webViewParameters = MSALWebviewParameters(authPresentationViewController: self.bridge.viewController)
+        #else
+        let webViewParameters = MSALWebviewParameters()
+        #endif
+
+        let parameters = MSALInteractiveTokenParameters(scopes: self.msalPopupScopes!, webviewParameters: webViewParameters)
+        parameters.promptType = .selectAccount
+        
+        // 3. Acquire Token view Redirect Login through Microsft Identity Platform
+        self.msalClient?.acquireToken(with: parameters) { (response, error) in
+            if let error = error {
+                call.error("InteractiveLogin Error: Unknown Error", error, [
+                    "errorDescription": error.localizedDescription
                 ])
+                return
             }
-        } else {
-            call.reject("Options have not been set")
+            
+            guard let response = response else {
+                call.reject("InteractiveLogin Error: Could not acquire token: No result returned", nil, nil, [
+                    "interactiveLogin": "No response was returned from MSAL Login"
+                ])
+                return
+            }
+            
+            self.msalResults = response
+            self.msalAccount = response.account
+            self.msalAuthenticated = true
+            self.resolveAuthenticationResults(call, response);
         }
     }
     
     private func loginSilently(_ account : MSALAccount!, _ call: CAPPluginCall) {
-        guard let applicationContext = self.client else { return }
-        let parameters = MSALSilentTokenParameters(scopes: self.popupScopes ?? [], account: account)
-        applicationContext.acquireTokenSilent(with: parameters) { (response, error) in
+        let parameters = MSALSilentTokenParameters(scopes: self.msalPopupScopes!, account: account)
+        self.msalClient?.acquireTokenSilent(with: parameters) { (response, error) in
             if let error = error {
-                let nsError = error as NSError
-                if (nsError.domain == MSALErrorDomain) {
-                    if (nsError.code == MSALError.interactionRequired.rawValue) {
+                let error = error as NSError
+                if (error.domain == MSALErrorDomain) {
+                    if (error.code == MSALError.interactionRequired.rawValue) {
                         DispatchQueue.main.async {
                             self.loginInteractive(call)
                         }
                         return
                     }
                 }
-                call.reject("Could not acquire token silently: \(error)")
+                call.reject("SilentLogin Error: Could not acquire token silently: \(error)")
                 return
             }
             
             guard let response = response else {
-                call.reject("Could not acquire token: No result returned")
+                call.reject("SilentLogin Error: Could not acquire token: No result returned")
                 return
             }
             
-            self.authResults = response
-            self.account = response.account
-            self.authenticated = true
-            
+            self.msalResults = response
+            self.msalAccount = response.account
+            self.msalAuthenticated = true
+            self.resolveAuthenticationResults(call, response)
+        }
+    }
+    
+    private func isBiometricAvaiable() -> Bool {
+        do {
+            var error: NSError?
+            if self.msalLocalAuthContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+                return true
+            } else {
+                return false
+            }
+        } catch let error {
+            return false
+        }
+    }
+
+    private func resolveAuthenticationResults(_ call: CAPPluginCall, _ authResults: MSALResult!) {
+        if (authResults != nil) {   
             call.resolve([
                 "results" : [
-                    "authority" : response.authority.url.absoluteString,
-                    "uniqueId": response.tenantProfile.identifier,
-                    "tenantId" : response.tenantProfile.tenantId ?? "" as String,
-                    "accessToken" : response.accessToken,
-                    "idToken" : response.idToken ?? "" as String,
-                    "expiresOn": self.dateFormatter.string(from: response.expiresOn),
+                    "authority" : authResults.authority.url.absoluteString,
+                    "uniqueId": authResults.tenantProfile.identifier,
+                    "tenantId" : authResults.tenantProfile.tenantId ?? "" as String,
+                    "accessToken" : authResults.accessToken,
+                    "idToken" : authResults.idToken ?? "" as String,
+                    "expiresOn": self.dateFormatter.string(from: authResults.expiresOn),
                     "account": [
-                        "homeAccountId": response.account.homeAccountId?.identifier ?? "",
-                        "tenantId": response.tenantProfile.tenantId,
-                        "localAccountId":  response.account.identifier ?? "",
-                        "username": response.account.username,
-                        "idTokenClaims": response.account.accountClaims
+                        "homeAccountId": authResults.account.homeAccountId?.identifier ?? "",
+                        "tenantId": authResults.tenantProfile.tenantId,
+                        "localAccountId":  authResults.account.identifier ?? "",
+                        "username": authResults.account.username,
+                        "idTokenClaims": authResults.account.accountClaims
                     ],
                     "idTokenClaims": [
-                        response.tenantProfile.claims
+                        authResults.tenantProfile.claims
                     ],
-                    "scopes": response.scopes
+                    "scopes": authResults.scopes
                 ]
+            ])
+
+        } else {
+            call.resolve([
+                "results": []
             ])
         }
     }
-
-    
-    func updateLogging(text : String) {
-        if Thread.isMainThread {
-            self.loggingText = text
-        } else {
-            DispatchQueue.main.async {
-                self.loggingText = text
-            }
-        }
-    }
 }
-
-
-

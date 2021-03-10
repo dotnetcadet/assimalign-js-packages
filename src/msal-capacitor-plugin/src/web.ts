@@ -1,13 +1,13 @@
-import { WebPlugin } from '@capacitor/core';
+import { WebPlugin , registerWebPlugin} from '@capacitor/core';
 import { IMsalPlugin, IMsalPluginOptions } from './definitions';
 import { PublicClientApplication, AuthenticationResult } from '@azure/msal-browser';
 
 export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
-  authResults: AuthenticationResult | null;
-  authenticated: boolean;
-  client?: PublicClientApplication;
-  popupScopes: string[];
-  hasOptions: boolean;
+  msalResults: AuthenticationResult | null;
+  msalAuthenticated: boolean;
+  msalClient?: PublicClientApplication;
+  msalPopupScopes: string[];
+  msalHasOptions: boolean;
   
   constructor() {
     super({
@@ -15,32 +15,29 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
       platforms: ['web'],
     });
 
-    this.authResults = null;
-    this.authenticated = false;
-    this.popupScopes = [];
-    this.hasOptions = false;
-    console.log('Plugin Instantiated');
+    this.msalResults = null;
+    this.msalAuthenticated = false;
+    this.msalPopupScopes = [];
+    this.msalHasOptions = false;
   }
-
-
 
   async setOptions(options?: IMsalPluginOptions): Promise<void> {
     return new Promise((resolve, reject)=> {
       try {
         if(options) {
-          this.client = new PublicClientApplication({
+          this.msalClient = new PublicClientApplication({
             auth: {
-              clientId: options.clientId ,
+              clientId: options.clientId,
               redirectUri: options.redirectUri,
               authority: options.authority
             },
             cache: {
-              cacheLocation: "localStorage",
-              storeAuthStateInCookie: true
+              cacheLocation: options?.webOptions?.cacheLocation ?? "localStorage",
+              storeAuthStateInCookie: options?.webOptions?.storeAuthStateInCookie ?? true
             }
           })
-          this.popupScopes = options.scopes;
-          this.hasOptions = true;
+          this.msalPopupScopes = options.scopes;
+          this.msalHasOptions = true;
           resolve();
         } else {
           reject("No Options where passed through");
@@ -55,7 +52,7 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
   async isAuthenticated(): Promise<{results: boolean}> {
     return new Promise(async (resolve, reject)=>{
       try {
-        resolve({results: this.authenticated})
+        resolve({results: this.msalAuthenticated})
       }
       catch(error){
         reject(error)
@@ -66,19 +63,19 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
   async login(): Promise<{results: AuthenticationResult | null}> {
     return new Promise(async (resolve, reject)=>{
       try {
-        if(!this.hasOptions){
+        if(!this.msalHasOptions){
           reject("Options have not been set");
         }
 
-        if(this.client) {
-          let response = await this.client.loginPopup({
-            scopes: this.popupScopes,
+        if(this.msalClient) {
+          let response = await this.msalClient.loginPopup({
+            scopes: this.msalPopupScopes,
             prompt: 'select_account'
           })
     
           if(response) {
-            this.authenticated = true;
-            this.authResults = response;
+            this.msalAuthenticated = true;
+            this.msalResults = response;
             resolve({
               results: response
             })
@@ -96,11 +93,11 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
 
   async logout(): Promise<void> {
     return new Promise(async (resolve, reject)=>{
-      if(this.client){
-        await this.client.logout({
-          account: this.client.getActiveAccount() ?? undefined
+      if(this.msalClient){
+        await this.msalClient.logout({
+          account: this.msalClient.getActiveAccount() ?? undefined
         });
-        this.authenticated = false;
+        this.msalAuthenticated = false;
         resolve()
       }
       reject()
@@ -110,7 +107,7 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
   async acquireUserRoles(): Promise<{results: string[]}> { 
     return new Promise((resolve, reject)=> {
       try {
-        let roles = (this.authResults?.idTokenClaims as any)?.roles as string[] ?? [];
+        let roles = (this.msalResults?.idTokenClaims as any)?.roles as string[] ?? [];
         if(roles){
           resolve({
             results: roles
@@ -128,9 +125,9 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
 
   async acquireAuthenticationResult(): Promise<{results: AuthenticationResult | null}> {
     return new Promise((resolve, reject)=> {
-      if(this.authResults){
+      if(this.msalResults){
         resolve({
-          results: this.authResults
+          results: this.msalResults
         })
       } else {
         reject("No Authentication Results to return")
@@ -140,11 +137,11 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
 
   async acquireAccessTokenForUser(request: {scopes: string[]}): Promise<{results: string}> {
     return new Promise(async (resolve, reject)=>{
-      if(this.client){
+      if(this.msalClient){
         try {
-          let token = await this.client.acquireTokenSilent({
+          let token = await this.msalClient.acquireTokenSilent({
             scopes: request.scopes,
-            account: this.authResults?.account ?? undefined
+            account: this.msalResults?.account ?? undefined
           });
           resolve({
             results: token.accessToken
@@ -162,6 +159,4 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
 const MsalPlugin = new MsalPluginWeb();
 
 export { MsalPlugin };
-
-import { registerWebPlugin } from '@capacitor/core';
 registerWebPlugin(MsalPlugin);
