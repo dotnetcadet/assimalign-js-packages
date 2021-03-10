@@ -7,16 +7,16 @@ declare module '@capacitor/core' {
 }
 
 export interface IMsalAndroidPluginOptions {
-
+  enableBiometrics?: boolean;
 }
 
 export interface IMsalWebPluginOptions {
-  cacheLocation: 'sessionStorage' | 'localStorage';
-  storeAuthStateInCookie: boolean;
+  cacheLocation?: 'sessionStorage' | 'localStorage';
+  storeAuthStateInCookie?: boolean;
 }
 
 export interface IMsalIosPluginOptions {
-  tokenCache?: string;
+  keyShareLocation?: string;
   enableBiometrics?: boolean;
 }
 

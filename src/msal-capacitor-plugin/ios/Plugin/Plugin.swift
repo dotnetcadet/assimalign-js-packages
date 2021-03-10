@@ -49,16 +49,16 @@ public class MsalPlugin: CAPPlugin {
                var tokenCache = ""
 
                 #if os(iOS)
-                if isoOptions["tokenCache"] == nil {
+                if isoOptions["keyShareLocation"] == nil {
                     tokenCache = "com.microsoft.adalcache"
                 } else {
-                    tokenCache = isoOptions["tokenCache"] as! String
+                    tokenCache = isoOptions["keyShareLocation"] as! String
                 }
                 #else
-                if isoOptions["tokenCache"] == nil {
+                if isoOptions["keyShareLocation"] == nil {
                     tokenCache = "com.microsoft.identity.universalstorage"
                 } else {
-                    tokenCache = isoOptions["tokenCache"] as! String
+                    tokenCache = isoOptions["keyShareLocation"] as! String
                 }
                 #endif
                 clientConfiguration.cacheConfig.keychainSharingGroup = tokenCache

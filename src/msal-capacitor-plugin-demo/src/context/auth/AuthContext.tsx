@@ -30,8 +30,15 @@ export const useAuthentication = (): IAuthContext => {
       scopes: [
         'user.read'
       ],
+      webOptions: {
+        cacheLocation: 'sessionStorage', // Can either be localStorage or sessionStorage or Web App. Default is sessionStorage
+        storeAuthStateInCookie: true
+      },
       iosOptions: {
-        tokenCache: 'sessionStorage',
+        keyShareLocation: 'com.company.cache', // This is the Keyshare location where credentials are stored for silent login
+        enableBiometrics: true
+      },
+      androidOptions: {
         enableBiometrics: true
       }
     }))

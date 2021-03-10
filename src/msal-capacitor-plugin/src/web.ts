@@ -32,7 +32,7 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
               authority: options.authority
             },
             cache: {
-              cacheLocation: options?.webOptions?.cacheLocation ?? "localStorage",
+              cacheLocation: options?.webOptions?.cacheLocation ?? "sessionStorage",
               storeAuthStateInCookie: options?.webOptions?.storeAuthStateInCookie ?? true
             }
           })
