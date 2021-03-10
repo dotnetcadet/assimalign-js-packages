@@ -45,23 +45,25 @@ public class MsalPlugin: CAPPlugin {
                 } else {
                     self.msalUseBiometrics = isoOptions["enableBiometrics"] as! Bool;
                 }
+                
+                var tokenCache = ""
 
-               var tokenCache = ""
+                 #if os(iOS)
+                 if isoOptions["keyShareLocation"] == nil {
+                     tokenCache = "com.microsoft.adalcache"
+                 } else {
+                     tokenCache = isoOptions["keyShareLocation"] as! String
+                 }
+                 #else
+                 if isoOptions["keyShareLocation"] == nil {
+                     tokenCache = "com.microsoft.identity.universalstorage"
+                 } else {
+                     tokenCache = isoOptions["keyShareLocation"] as! String
+                 }
+                 #endif
+                 clientConfiguration.cacheConfig.keychainSharingGroup = tokenCache
 
-                #if os(iOS)
-                if isoOptions["keyShareLocation"] == nil {
-                    tokenCache = "com.microsoft.adalcache"
-                } else {
-                    tokenCache = isoOptions["keyShareLocation"] as! String
-                }
-                #else
-                if isoOptions["keyShareLocation"] == nil {
-                    tokenCache = "com.microsoft.identity.universalstorage"
-                } else {
-                    tokenCache = isoOptions["keyShareLocation"] as! String
-                }
-                #endif
-                clientConfiguration.cacheConfig.keychainSharingGroup = tokenCache
+               
             } else {
                 self.msalUseBiometrics = false
             }
@@ -209,7 +211,7 @@ public class MsalPlugin: CAPPlugin {
                     if success {
                         DispatchQueue.main.async {
                             self.setCurrentAccount {(account) in
-                                guard let currentAccount = self.msalAccount else {
+                                guard let currentAccount = account else {
                                     self.loginInteractive(call)
                                     return
                                 }
@@ -255,6 +257,10 @@ public class MsalPlugin: CAPPlugin {
                 
         self.msalClient?.getCurrentAccount(with: msalParameters, completionBlock: { (currentAccount, previousAccount, error) in
             if let error = error {
+                if let completion = completion {
+                    completion(nil)
+                }
+
                 return
             }
             
@@ -313,7 +319,8 @@ public class MsalPlugin: CAPPlugin {
         #endif
 
         let parameters = MSALInteractiveTokenParameters(scopes: self.msalPopupScopes!, webviewParameters: webViewParameters)
-        parameters.promptType = .selectAccount
+        parameters.promptType = .default
+        parameters.completionBlockQueue = DispatchQueue.main
         
         // 3. Acquire Token view Redirect Login through Microsft Identity Platform
         self.msalClient?.acquireToken(with: parameters) { (response, error) in

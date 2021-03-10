@@ -21,11 +21,11 @@ export const useAuthentication = (): IAuthContext => {
   }, []);
 
   const initializeOptions = async() => {
-    let uri = isPlatform('capacitor') ? 'msauth.{iOS MAC redirect Url}://auth' : 'http://localhost:3000';
+    let uri = isPlatform('capacitor') ? 'msauth.{bundle Id}://auth' : 'http://localhost:3000';
     console.log(uri);
     (await MsalCap.setOptions({
-      clientId: 'Client ID',
-      authority: `https://login.microsoftonline.com/{Tenant ID}`,
+      clientId: 'Client Id',
+      authority: `https://login.microsoftonline.com/{Tenant Id}`,
       redirectUri: uri,
       scopes: [
         'user.read'
