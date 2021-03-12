@@ -26,7 +26,7 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
       try {
         if(options) {
 
-          if(options.guardForRerenders === true) {
+          if (options.rerenderGuard === true && this.msalHasOptions == true) {
             return
           }
           

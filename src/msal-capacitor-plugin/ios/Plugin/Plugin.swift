@@ -33,9 +33,8 @@ public class MsalPlugin: CAPPlugin {
 
     @objc func setOptions(_ call: CAPPluginCall) {
         do {
-            // 1. Sometimes Javascripts Apps cause re-renders resulting in options being set again
-            // This protects from options being set again
-            if (call.getBool("guardForRerenders") ?? false) == true && self.msalHasOptions == true {
+            // 1. Sometimes Javascripts Apps cause re-renders resulting in options being set again. This protects from options being set again
+            if (call.getBool("rerenderGuard") ?? false) == true && self.msalHasOptions == true {
                 return
             }
             
@@ -94,7 +93,6 @@ public class MsalPlugin: CAPPlugin {
         }
     }
     
-    
     @objc func acquireAccessTokenForUser(_ call: CAPPluginCall) {
         // 1. Check if Options have been set
         if self.msalHasOptions == false {
@@ -105,8 +103,7 @@ public class MsalPlugin: CAPPlugin {
         if self.msalAuthenticated == true {
             // 2.
             let msalParameters = MSALParameters()
-            msalParameters.completionBlockQueue = DispatchQueue.main
-            
+
             self.msalClient?.getCurrentAccount(with: msalParameters, completionBlock: { (currentAccount, previousAccount, error)  in
                 if let currentAccount = currentAccount {
                     self.msalAccount = currentAccount
@@ -271,7 +268,6 @@ public class MsalPlugin: CAPPlugin {
                 if let completion = completion {
                     completion(nil)
                 }
-
                 return
             }
             
@@ -290,7 +286,6 @@ public class MsalPlugin: CAPPlugin {
             }
         })
     }
-    
     
     private func logoutInteractive(_ call: CAPPluginCall) {
         do {
@@ -330,8 +325,8 @@ public class MsalPlugin: CAPPlugin {
         #endif
 
         let parameters = MSALInteractiveTokenParameters(scopes: self.msalPopupScopes!, webviewParameters: webViewParameters)
-        parameters.promptType = .default
-        parameters.completionBlockQueue = DispatchQueue.main
+        parameters.webviewParameters.webviewType = .wkWebView
+        parameters.promptType = .selectAccount
         
         // 3. Acquire Token view Redirect Login through Microsft Identity Platform
         self.msalClient?.acquireToken(with: parameters) { (response, error) in

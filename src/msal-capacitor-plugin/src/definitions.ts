@@ -37,7 +37,7 @@ export interface IMsalPluginOptions {
   webOptions?: IMsalWebPluginOptions;
   iosOptions?: IMsalIosPluginOptions;
   androidOptions?: IMsalAndroidPluginOptions;
-  guardForRerenders?: boolean;
+  rerenderGuard?: boolean;
 }
 
 export interface IMsalPlugin {
