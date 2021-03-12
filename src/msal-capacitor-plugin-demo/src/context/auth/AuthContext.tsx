@@ -21,17 +21,24 @@ export const useAuthentication = (): IAuthContext => {
   }, []);
 
   const initializeOptions = async() => {
-    let uri = isPlatform('capacitor') ? 'msauth.{iOS MAC redirect Url}://auth' : 'http://localhost:3000';
+    let uri = isPlatform('capacitor') ? 'msauth.{bundle Id}://auth' : 'http://localhost:3000';
     console.log(uri);
     (await MsalCap.setOptions({
-      clientId: 'Client ID',
-      authority: `https://login.microsoftonline.com/{Tenant ID}`,
+      clientId: '6b51f8a2-d03d-4d86-b753-87b45b89d794',
+      authority: `https://login.microsoftonline.com/29967363-a86a-4ea6-8f76-29aa44ec6f27`,
       redirectUri: uri,
       scopes: [
         'user.read'
       ],
+      webOptions: {
+        cacheLocation: 'sessionStorage', // Can either be localStorage or sessionStorage or Web App. Default is sessionStorage
+        storeAuthStateInCookie: true
+      },
       iosOptions: {
-        tokenCache: 'sessionStorage',
+        keyShareLocation: 'com.company.cache', // This is the Keyshare location where credentials are stored for silent login
+        enableBiometrics: true
+      },
+      androidOptions: {
         enableBiometrics: true
       }
     }))

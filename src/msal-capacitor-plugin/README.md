@@ -30,6 +30,30 @@ Below are examples are of how to implement an authentication provider that can b
 - Step 4 : `npm i @assimalign/msal-capacitor-plugin`
 - Step 5 : `ionic cap sync` Downlaoad Package
   
+
+### Ios Specific Setup: Add keys to info.plist File
+```xml
+  <key>LSApplicationQueriesSchemes</key>
+  <array>
+    <string>msauthv2</string>
+    <string>msauthv3</string>
+  </array>
+  <key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.getcapacitor.capacitor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>capacitor</string>
+				<string><!--The Key Sharing Groups which will be added to XCode--></string>
+			</array>
+		</dict>
+	</array>
+  <!-- If use Biometric Auth-->
+  <key>NSFaceIDUsageDescription</key>
+  <string>For an easier and faster log in.</string>
+```
 ---
 
 ## React App Instruction (Typescript)
@@ -61,8 +85,7 @@ Using `useContext` hook we will implement an auth provider that will wrap our ap
   import { IAuthContext } from './types';
   import { Plugins } from '@capacitor/core';
   import { isPlatform } from '@ionic/react';
-  import { AvailableResult, BiometryType } from 'capacitor-native-biometric';
-  import '@eastdil/msal-capacitor-plugin';
+  import '@assimalign/msal-capacitor-plugin';
 
   const AuthContext = createContext<IAuthContext>({
     isAuthenticated: () => { },
@@ -80,7 +103,7 @@ Using `useContext` hook we will implement an auth provider that will wrap our ap
     }, []);
 
     const initializeOptions = async() => {
-      let uri = isPlatform('capacitor') ? 'ios redirect url' : 'http://localhost:3000';
+      let uri = isPlatform('capacitor') ? 'msauth.{Bundle ID}://auth' : 'http://localhost:3000';
       console.log(uri);
       (await MsalCap.setOptions({
         clientId: 'Client Id',
@@ -201,6 +224,39 @@ Using `useContext` hook we will implement an auth provider that will wrap our ap
   }
 
   export default AuthContext;
+  ```
+
+### 3. Update AppDelegate.swift file in App Folder of ios platform 
+Because the Capacitor Callback bridge can't handle a redirect from a broker applicaiton we need to add the MSALPublicClientApplication Handler response to the ui return.
+
+This happens when redirect are in applications like Microsoft Authenticator.
+
+
+- Find the following applicaiton method below
+  
+  ```swift
+
+   func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+    // Called when the app was launched with a url. Feel free to add additional processing here,
+
+    return CAPBridge.handleOpenUrl(url, options)
+  }
+
+  ```
+- Add the following code
+
+  ```swift
+  func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+      // Called when the app was launched with a url. Feel free to add additional processing here,
+
+      var response = false
+      
+      response = MSALPublicClientApplication.handleMSALRespobse((url), sourceApplication: options[UIApplication.OpenURLOptionsKey.sourceApplication] as? String)
+      response = CAPBridge.handleOpenUrl(url, options)
+      
+      return response
+    }
+
   ```
 
 ---
