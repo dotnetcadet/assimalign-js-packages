@@ -28,6 +28,7 @@ export interface IMsalPluginOptions {
   webOptions?: IMsalWebPluginOptions;
   iosOptions?: IMsalIosPluginOptions;
   androidOptions?: IMsalAndroidPluginOptions;
+  guardForRerenders?: boolean;
 }
 
 export interface IMsalPlugin {
@@ -37,5 +38,5 @@ export interface IMsalPlugin {
   logout(): Promise<void>;
   acquireUserRoles(): Promise<{results: string[]}>;
   acquireAuthenticationResult(): Promise<{results: AuthenticationResult | null}>;
-  acquireAccessTokenForUser(request?: {scopes: string[]}): Promise<{results: string}>;
+  acquireAccessTokenForUser(request?: {scopes: string[], forceRefresh?:boolean}): Promise<{results: string}>;
 }

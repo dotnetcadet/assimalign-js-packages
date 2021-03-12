@@ -7,14 +7,19 @@ import LocalAuthentication
 public class MsalPlugin: CAPPlugin {
     
     typealias AccountCompletion = (MSALAccount?) -> Void
+    
+    var msalInitializationCount = Int()
 
     var msalAccount: MSALAccount?
     var msalResults: MSALResult?
     var msalClient: MSALPublicClientApplication?
+    // Struct Initialization Default is False, setting this in setOptions resulted in error due to reset of options when a rerender occurrs
+    //
     var msalAuthenticated = Bool()
     var msalUseBiometrics = Bool()
     var msalPopupScopes: [String]?
     var msalHasOptions = Bool()
+    
     var msalLocalAuthContext = LAContext()
     
     var dateFormatter = DateFormatter()
@@ -29,16 +34,23 @@ public class MsalPlugin: CAPPlugin {
 
     @objc func setOptions(_ call: CAPPluginCall) {
         do {
-            // Step 01: Validate all Options have been passed from  Plugin bridge
+            // 1. Sometimes Javascripts Apps cause re-renders resulting in options being set again
+            // This protects from options being set again
+            if (call.getBool("guardForRerenders") == true) != nil && self.msalHasOptions == true {
+                return
+            }
+            
+            // 2. Validate all Options have been passed from  Plugin bridge
             guard let authorityUri = call.getString("authority") else { return }
             guard let clientId = call.getString("clientId") else {return }
             guard let redirectUri  = call.getString("redirectUri") else {return }
             guard let authorityUrl = URL(string: authorityUri ) else {return }
 
-            // Step 02: If made it this point, then set & create Configuraitons, Authority, & Public Client 
+            // 3. If made it this point, then set & create Configuraitons, Authority, & Public Client
             let clientAuthority = try MSALAADAuthority(url: authorityUrl)
             let clientConfiguration = MSALPublicClientApplicationConfig(clientId: clientId, redirectUri: redirectUri, authority: clientAuthority)
             
+            // 4. Set iOS Options
             if let isoOptions = call.getObject("iosOptions") {
                 if isoOptions["enableBiometrics"] == nil {
                     self.msalUseBiometrics = false
@@ -72,7 +84,6 @@ public class MsalPlugin: CAPPlugin {
             self.msalClient = try MSALPublicClientApplication(configuration: clientConfiguration)
             self.msalPopupScopes = call.getArray("scopes", String.self)
             self.msalHasOptions = true
-            self.msalAuthenticated = false
 
             // Step 04: Need to resolve void and send response back to the bridge
             call.resolve()
@@ -84,18 +95,16 @@ public class MsalPlugin: CAPPlugin {
         }
     }
     
-    /*
-     
-    */
+    
     @objc func acquireAccessTokenForUser(_ call: CAPPluginCall) {
-        // Step 01: Check if Options have been set
+        // 1. Check if Options have been set
         if self.msalHasOptions == false {
             call.reject("AcquireAccessTokenForUser Error: MSAL Plugin Options have not been set yet. Please run 'setOptions'")
             return
         }
 
         if self.msalAuthenticated == true {
-            // 1.
+            // 2.
             let msalParameters = MSALParameters()
             msalParameters.completionBlockQueue = DispatchQueue.main
             
@@ -105,17 +114,21 @@ public class MsalPlugin: CAPPlugin {
                 }
             })
             
-            // 2. Validate and set scopes where passed through options
+            // 3. Validate and set scopes where passed through options
             guard let tokenScopes = call.getArray("scopes", String.self) else {
                 call.reject("AcquireAccessToken Error: No Scopes were provided")
                 return
             }
 
-            // 3. Set Silent Token Parameters
+            // 4. Set Silent Token Parameters
             let parameters = MSALSilentTokenParameters(scopes: tokenScopes, account: self.msalAccount!)
-            parameters.forceRefresh = true
             
-            // 4. Begin acquireing Access Token for OBO Flow and other Open ID Connect Prtocols
+            if ((call.getBool("forceRefresh") == true) != nil) {
+                parameters.forceRefresh = true
+            }
+
+            
+            // 5. Begin acquireing Access Token for OBO Flow and other Open ID Connect Prtocols
             self.msalClient?.acquireTokenSilent(with: parameters, completionBlock: { (response, error) in
                 if let error = error {
                     call.error("AcquireAccessToken Error: Unable to Acquire Access Token", error, [
