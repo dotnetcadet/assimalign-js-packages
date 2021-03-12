@@ -33,7 +33,8 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
             },
             cache: {
               cacheLocation: options?.webOptions?.cacheLocation ?? "sessionStorage",
-              storeAuthStateInCookie: options?.webOptions?.storeAuthStateInCookie ?? true
+              storeAuthStateInCookie: options?.webOptions?.storeAuthStateInCookie ?? true,
+              secureCookies: options?.webOptions?.secureCookies ?? false
             }
           })
           this.msalPopupScopes = options.scopes;
@@ -154,6 +155,12 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
       reject("MSAL Client has not been initiated");
     })
   }
+
+  // private checkAccessTokenCache(scopes: string[]): string {
+  //   scopes.forEach(scope => {
+     
+  //   });
+  // }
 }
 
 const MsalPlugin = new MsalPluginWeb();

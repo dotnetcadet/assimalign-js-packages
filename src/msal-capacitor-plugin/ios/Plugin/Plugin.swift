@@ -22,7 +22,6 @@ public class MsalPlugin: CAPPlugin {
 
     // This will act as a constructor for initializing
     public override func load() {
-        
         self.dateFormatter.dateFormat = "YY-MM-dd'T'HH:mm:ss"
     }
     

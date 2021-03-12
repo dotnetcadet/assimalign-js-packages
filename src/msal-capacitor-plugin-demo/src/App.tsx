@@ -22,7 +22,7 @@ const App: React.FC = () => {
 
   const authProvider = useAuthentication();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-
+  const [accessToken, setAccessToken] = useState<string>("");
 
   useEffect(()=>{
     handleLogin();
