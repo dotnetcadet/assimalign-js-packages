@@ -36,7 +36,7 @@ public class MsalPlugin: CAPPlugin {
         do {
             // 1. Sometimes Javascripts Apps cause re-renders resulting in options being set again
             // This protects from options being set again
-            if (call.getBool("guardForRerenders") == true) != nil && self.msalHasOptions == true {
+            if (call.getBool("guardForRerenders") ?? false) == true && self.msalHasOptions == true {
                 return
             }
             
@@ -122,8 +122,7 @@ public class MsalPlugin: CAPPlugin {
 
             // 4. Set Silent Token Parameters
             let parameters = MSALSilentTokenParameters(scopes: tokenScopes, account: self.msalAccount!)
-            
-            if ((call.getBool("forceRefresh") == true) != nil) {
+            if (call.getBool("forceRefresh") ?? false) == true {
                 parameters.forceRefresh = true
             }
 
