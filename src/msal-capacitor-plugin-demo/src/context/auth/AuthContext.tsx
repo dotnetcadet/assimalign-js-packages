@@ -21,7 +21,7 @@ export const useAuthentication = (): IAuthContext => {
   }, []);
 
   const initializeOptions = async() => {
-    let uri = isPlatform('capacitor') ? 'msauth.{iOS MAC redirect Url}://auth' : 'http://localhost:3000';
+    let uri = isPlatform('capacitor') ? 'msauth.{bundle Id}://auth' : 'http://localhost:3000';
     console.log(uri);
     (await MsalCap.setOptions({
       clientId: '6b51f8a2-d03d-4d86-b753-87b45b89d794',

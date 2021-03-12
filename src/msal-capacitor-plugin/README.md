@@ -30,6 +30,30 @@ Below are examples are of how to implement an authentication provider that can b
 - Step 4 : `npm i @assimalign/msal-capacitor-plugin`
 - Step 5 : `ionic cap sync` Downlaoad Package
   
+
+### Ios Specific Setup: Add keys to info.plist File
+```xml
+  <key>LSApplicationQueriesSchemes</key>
+  <array>
+    <string>msauthv2</string>
+    <string>msauthv3</string>
+  </array>
+  <key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.getcapacitor.capacitor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>capacitor</string>
+				<string><!--The Key Sharing Groups which will be added to XCode--></string>
+			</array>
+		</dict>
+	</array>
+  <!-- If use Biometric Auth-->
+  <key>NSFaceIDUsageDescription</key>
+  <string>For an easier and faster log in.</string>
+```
 ---
 
 ## React App Instruction (Typescript)
@@ -61,8 +85,7 @@ Using `useContext` hook we will implement an auth provider that will wrap our ap
   import { IAuthContext } from './types';
   import { Plugins } from '@capacitor/core';
   import { isPlatform } from '@ionic/react';
-  import { AvailableResult, BiometryType } from 'capacitor-native-biometric';
-  import '@eastdil/msal-capacitor-plugin';
+  import '@assimalign/msal-capacitor-plugin';
 
   const AuthContext = createContext<IAuthContext>({
     isAuthenticated: () => { },

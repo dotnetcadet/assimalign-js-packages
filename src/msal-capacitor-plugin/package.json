@@ -1,8 +1,8 @@
 {
   "name": "@assimalign/msal-capacitor-plugin",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A custom Capacitor Plugin for MSAL targeting Web and IOS Platforms",
-  "main": "dist/plugin.js",
+  "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "scripts": {

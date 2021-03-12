@@ -4,9 +4,7 @@
 <dict>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)com.microsoft.adalcache</string>
-		<string>$(AppIdentifierPrefix)com.microsoft.identity.universalstorage</string>
-		<string>$(AppIdentifierPrefix)sessionStorage</string>
+		<string>$(AppIdentifierPrefix)com.company.cache</string>
 	</array>
 </dict>
 </plist>

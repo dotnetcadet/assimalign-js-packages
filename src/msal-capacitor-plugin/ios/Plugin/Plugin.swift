@@ -7,14 +7,19 @@ import LocalAuthentication
 public class MsalPlugin: CAPPlugin {
     
     typealias AccountCompletion = (MSALAccount?) -> Void
+    
+    var msalInitializationCount = Int()
 
     var msalAccount: MSALAccount?
     var msalResults: MSALResult?
     var msalClient: MSALPublicClientApplication?
+    // Struct Initialization Default is False, setting this in setOptions resulted in error due to reset of options when a rerender occurrs
+    //
     var msalAuthenticated = Bool()
     var msalUseBiometrics = Bool()
     var msalPopupScopes: [String]?
     var msalHasOptions = Bool()
+    
     var msalLocalAuthContext = LAContext()
     
     var dateFormatter = DateFormatter()
@@ -28,39 +33,48 @@ public class MsalPlugin: CAPPlugin {
 
     @objc func setOptions(_ call: CAPPluginCall) {
         do {
-            // Step 01: Validate all Options have been passed from  Plugin bridge
+            // 1. Sometimes Javascripts Apps cause re-renders resulting in options being set again
+            // This protects from options being set again
+            if (call.getBool("guardForRerenders") ?? false) == true && self.msalHasOptions == true {
+                return
+            }
+            
+            // 2. Validate all Options have been passed from  Plugin bridge
             guard let authorityUri = call.getString("authority") else { return }
             guard let clientId = call.getString("clientId") else {return }
             guard let redirectUri  = call.getString("redirectUri") else {return }
             guard let authorityUrl = URL(string: authorityUri ) else {return }
 
-            // Step 02: If made it this point, then set & create Configuraitons, Authority, & Public Client 
+            // 3. If made it this point, then set & create Configuraitons, Authority, & Public Client
             let clientAuthority = try MSALAADAuthority(url: authorityUrl)
             let clientConfiguration = MSALPublicClientApplicationConfig(clientId: clientId, redirectUri: redirectUri, authority: clientAuthority)
             
+            // 4. Set iOS Options
             if let isoOptions = call.getObject("iosOptions") {
                 if isoOptions["enableBiometrics"] == nil {
                     self.msalUseBiometrics = false
                 } else {
                     self.msalUseBiometrics = isoOptions["enableBiometrics"] as! Bool;
                 }
+                
+                var tokenCache = ""
 
-               var tokenCache = ""
+                 #if os(iOS)
+                 if isoOptions["keyShareLocation"] == nil {
+                     tokenCache = "com.microsoft.adalcache"
+                 } else {
+                     tokenCache = isoOptions["keyShareLocation"] as! String
+                 }
+                 #else
+                 if isoOptions["keyShareLocation"] == nil {
+                     tokenCache = "com.microsoft.identity.universalstorage"
+                 } else {
+                     tokenCache = isoOptions["keyShareLocation"] as! String
+                 }
+                 #endif
+                 clientConfiguration.cacheConfig.keychainSharingGroup = tokenCache
 
-                #if os(iOS)
-                if isoOptions["keyShareLocation"] == nil {
-                    tokenCache = "com.microsoft.adalcache"
-                } else {
-                    tokenCache = isoOptions["keyShareLocation"] as! String
-                }
-                #else
-                if isoOptions["keyShareLocation"] == nil {
-                    tokenCache = "com.microsoft.identity.universalstorage"
-                } else {
-                    tokenCache = isoOptions["keyShareLocation"] as! String
-                }
-                #endif
-                clientConfiguration.cacheConfig.keychainSharingGroup = tokenCache
+               
             } else {
                 self.msalUseBiometrics = false
             }
@@ -69,7 +83,6 @@ public class MsalPlugin: CAPPlugin {
             self.msalClient = try MSALPublicClientApplication(configuration: clientConfiguration)
             self.msalPopupScopes = call.getArray("scopes", String.self)
             self.msalHasOptions = true
-            self.msalAuthenticated = false
 
             // Step 04: Need to resolve void and send response back to the bridge
             call.resolve()
@@ -81,18 +94,16 @@ public class MsalPlugin: CAPPlugin {
         }
     }
     
-    /*
-     
-    */
+    
     @objc func acquireAccessTokenForUser(_ call: CAPPluginCall) {
-        // Step 01: Check if Options have been set
+        // 1. Check if Options have been set
         if self.msalHasOptions == false {
             call.reject("AcquireAccessTokenForUser Error: MSAL Plugin Options have not been set yet. Please run 'setOptions'")
             return
         }
 
         if self.msalAuthenticated == true {
-            // 1.
+            // 2.
             let msalParameters = MSALParameters()
             msalParameters.completionBlockQueue = DispatchQueue.main
             
@@ -102,17 +113,20 @@ public class MsalPlugin: CAPPlugin {
                 }
             })
             
-            // 2. Validate and set scopes where passed through options
+            // 3. Validate and set scopes where passed through options
             guard let tokenScopes = call.getArray("scopes", String.self) else {
                 call.reject("AcquireAccessToken Error: No Scopes were provided")
                 return
             }
 
-            // 3. Set Silent Token Parameters
+            // 4. Set Silent Token Parameters
             let parameters = MSALSilentTokenParameters(scopes: tokenScopes, account: self.msalAccount!)
-            parameters.forceRefresh = true
+            if (call.getBool("forceRefresh") ?? false) == true {
+                parameters.forceRefresh = true
+            }
+
             
-            // 4. Begin acquireing Access Token for OBO Flow and other Open ID Connect Prtocols
+            // 5. Begin acquireing Access Token for OBO Flow and other Open ID Connect Prtocols
             self.msalClient?.acquireTokenSilent(with: parameters, completionBlock: { (response, error) in
                 if let error = error {
                     call.error("AcquireAccessToken Error: Unable to Acquire Access Token", error, [
@@ -208,7 +222,7 @@ public class MsalPlugin: CAPPlugin {
                     if success {
                         DispatchQueue.main.async {
                             self.setCurrentAccount {(account) in
-                                guard let currentAccount = self.msalAccount else {
+                                guard let currentAccount = account else {
                                     self.loginInteractive(call)
                                     return
                                 }
@@ -254,6 +268,10 @@ public class MsalPlugin: CAPPlugin {
                 
         self.msalClient?.getCurrentAccount(with: msalParameters, completionBlock: { (currentAccount, previousAccount, error) in
             if let error = error {
+                if let completion = completion {
+                    completion(nil)
+                }
+
                 return
             }
             
@@ -312,7 +330,8 @@ public class MsalPlugin: CAPPlugin {
         #endif
 
         let parameters = MSALInteractiveTokenParameters(scopes: self.msalPopupScopes!, webviewParameters: webViewParameters)
-        parameters.promptType = .selectAccount
+        parameters.promptType = .default
+        parameters.completionBlockQueue = DispatchQueue.main
         
         // 3. Acquire Token view Redirect Login through Microsft Identity Platform
         self.msalClient?.acquireToken(with: parameters) { (response, error) in
