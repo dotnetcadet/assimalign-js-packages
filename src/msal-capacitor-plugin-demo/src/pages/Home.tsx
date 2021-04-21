@@ -56,6 +56,10 @@ const Home: React.FC = () => {
 
   const getProperty = <T, K extends keyof T>(o?: T, propertyName?: K): T[K] => {
 
+   if(authenticationResults?.idTokenClaims) {
+     let t = authenticationResults.idTokenClaims as IRoles
+   }
+
     if(o && propertyName) {
       return o[propertyName];
     } else {
@@ -89,7 +93,7 @@ const Home: React.FC = () => {
             <IonList>
 
               <IonItem>
-                <IonLabel>{ (Object.entries(authenticationResults?.idTokenClaims ?? {}).filter(([x,y]) => x === "roles").values()) }</IonLabel>
+                <IonLabel>{ (Object.entries(authenticationResults?.idTokenClaims ?? {}).filter(([x,y]) => x === "roles",)) }</IonLabel>
               </IonItem>
               
               {
