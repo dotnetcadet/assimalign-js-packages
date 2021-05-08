@@ -1,0 +1,22 @@
+trigger:
+- main
+
+pool:
+  vmImage: windows-latest
+
+variables:
+- group: assimalign.github
+
+steps:
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      $pat = '$(access.token)'
+      $b64pat = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(":$pat"))
+      mkdir source
+      cd source
+      git clone https://github.com/Assimalign-LLC/assimalign-js-packages.git --branch main
+      cd assimalign-js-packages
+      git -c http.extraHeader="Authorization: Basic $B64Pat" push --mirror https://assimalign@dev.azure.com/assimalign/Assimalign.1.0/_git/assimalign-js-packages

@@ -1,6 +1,6 @@
 {
   "name": "@assimalign/msal-capacitor-plugin",
-  "version": "1.0.5",
+  "version": "2.0.0-beta1",
   "description": "A custom Capacitor Plugin for MSAL targeting Web and IOS Platforms",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -62,6 +62,6 @@
     "url": "https://github.com/Assimalign-LLC/assim-js-packages.git/issues"
   },
   "dependencies": {
-    "@azure/msal-browser": "^2.12.0"
+    "@azure/msal-browser": "^2.14.1"
   }
 }
