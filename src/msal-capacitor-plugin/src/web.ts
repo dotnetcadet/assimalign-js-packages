@@ -104,9 +104,7 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
       }
     
       try {
-        console.log(request)
         let silentResponse = await this.client?.acquireTokenSilent(request)
-  
         if(silentResponse) {
           resolve({
             results: silentResponse
@@ -126,7 +124,6 @@ export class MsalPluginWeb extends WebPlugin implements IMsalPlugin {
       }
       try {
         let interactiveResponse = await this.client?.acquireTokenPopup(request)
-
         if (interactiveResponse) {
           resolve({
             results: interactiveResponse

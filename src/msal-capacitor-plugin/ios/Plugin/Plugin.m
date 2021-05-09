@@ -17,4 +17,3 @@ CAP_PLUGIN(MsalCap, "MsalPlugin",
     CAP_PLUGIN_METHOD(login, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(logout, CAPPluginReturnPromise);
 )
-
