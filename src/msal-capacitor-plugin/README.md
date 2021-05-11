@@ -31,7 +31,7 @@ Capacitor plugin to support [Sign in with Microsoft Identity (Personal & Work Ac
 
 ## v2.0.0 Breaking Changes
 - API Changes: All original APIs from v1 will be removed besides login(), and logout(). However, the parameters have changed.
-- Cross-Platform Return Types: return types should be the same as 
+- Cross-Platform Return Types: return types should be the same as the msal packages for iOS and Web
 
 
 
