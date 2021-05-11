@@ -1,9 +1,9 @@
 # Capacitor Plugin to Sign into Microsoft Identity
 - [Capacitor Plugin to Sign into Microsoft Identity](#capacitor-plugin-to-sign-into-microsoft-identity)
   - [Maintainers](#maintainers)
-  - [Breaking Changes](#breaking-changes)
+  - [v2.0.0 Breaking Changes](#v200-breaking-changes)
   - [Installation](#installation)
-  - [Usage (Web, iOS) [Android Comming soon]](#usage-web-ios-android-comming-soon)
+  - [Usage (Web, iOS) [Android Coming soon]](#usage-web-ios-android-coming-soon)
     - [Initial Setup](#initial-setup)
     - [iOS Specific Setup: Add keys to info.plist File](#ios-specific-setup-add-keys-to-infoplist-file)
   - [Vue.js Instructions (Typescript)](#vuejs-instructions-typescript)
@@ -29,9 +29,11 @@ Capacitor plugin to support [Sign in with Microsoft Identity (Personal & Work Ac
 
 ---
 
-## Breaking Changes
+## v2.0.0 Breaking Changes
+- API Changes: All original APIs from v1 will be removed besides login(), and logout(). However, the parameters have changed.
+- Cross-Platform Return Types: return types should be the same as 
 
-Maintenance Status: Partially Maintained (help wanted)
+
 
 ---
 
@@ -41,15 +43,15 @@ Maintenance Status: Partially Maintained (help wanted)
 
 ---
 
-## Usage (Web, iOS) [Android Comming soon]
-Below are examples are of how to implement an authentication provider that can be resued through out the application.
+## Usage (Web, iOS) [Android Coming soon]
+Below are examples are of how to implement an authentication provider that can be reused through out the application.
 
 ### Initial Setup
 - Step 1 : `npm install -g @ionic/cli`
 - Step 2 : `ionic start {app name} --type {app type}` Type: react | angular | vue
-- Step 3 : `ionic serve` (Need to build applicaiton before implementing plugin)
+- Step 3 : `ionic serve` (Need to build application before implementing plugin)
 - Step 4 : `npm i @assimalign/msal-capacitor-plugin`
-- Step 5 : `ionic cap sync` Downlaoad Package
+- Step 5 : `ionic cap sync` Download Package
   
 
 ### iOS Specific Setup: Add keys to info.plist File
@@ -78,7 +80,7 @@ Below are examples are of how to implement an authentication provider that can b
 ---
 
 ## Vue.js Instructions (Typescript)
-To implementent authentication were going to create authentication session hooks that update global state through out our application.
+To implementation authentication were going to create authentication session hooks that update global state through-out our application.
 
 ### 1. Create Store
 Under `src` folder create a `store.ts` file if not already there and add the below code.
@@ -87,7 +89,7 @@ Under `src` folder create a `store.ts` file if not already there and add the bel
 ---
 
 ## React.js Instruction (Typescript)
-To implementent authentication were going to create authentication session hooks that update global state through out our application.
+To implementation authentication were going to create authentication session hooks that update global state through-out our application.
 
 ### 1. Create Store
 Under `src` folder create a `store.ts` file if not already there and add the below code.
@@ -444,7 +446,7 @@ This happens when redirect are in applications like Microsoft Authenticator.
 ---
 
 ## MSAL Capacitor Plugin Methods & Types
-Below is a list of methods and return types that are expsode on both iOS and Web implementation. All types and methods replicate what is globaly accepted accross both platforms. 
+Below is a list of methods and return types that are exposed on both iOS and Web implementation. All types and methods replicate what is globally accepted across both platforms. 
 
 ### Methods
 ```ts
