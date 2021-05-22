@@ -435,7 +435,7 @@ This happens when redirect are in applications like Microsoft Authenticator.
 
       var response = false
       
-      response = MSALPublicClientApplication.handleMSALRespobse((url), sourceApplication: options[UIApplication.OpenURLOptionsKey.sourceApplication] as? String)
+      response = MSALPublicClientApplication.handleMSALResponse((url), sourceApplication: options[UIApplication.OpenURLOptionsKey.sourceApplication] as? String)
       response = CAPBridge.handleOpenUrl(url, options)
       
       return response
